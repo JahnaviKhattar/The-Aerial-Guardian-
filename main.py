@@ -5,30 +5,18 @@ import supervision as sv
 from collections import defaultdict, deque
 import numpy as np
 
-# ==============================
 # LOAD MODEL
-# ==============================
-
 model = YOLO("yolov8n.pt")
 
-# ==============================
 # VIDEO INPUT
-# ==============================
-
 video_path = "input/video1.mp4"
-
 cap = cv2.VideoCapture(video_path)
-
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps = int(cap.get(cv2.CAP_PROP_FPS))
 
-# ==============================
 # OUTPUT VIDEO
-# ==============================
-
 output_path = "output_video1.mp4"
-
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
 out = cv2.VideoWriter(
@@ -38,32 +26,15 @@ out = cv2.VideoWriter(
     (width, height)
 )
 
-# ==============================
-# BYTE TRACKER
-# ==============================
-
 tracker = sv.ByteTrack()
-
-# ==============================
-# TRACK HISTORY
-# ==============================
 
 track_history = defaultdict(
     lambda: deque(maxlen=30)
 )
-
-# ==============================
-# HEATMAP
-# ==============================
-
 heatmap = np.zeros(
     (height, width),
     dtype=np.float32
 )
-
-# ==============================
-# ANNOTATORS
-# ==============================
 
 box_annotator = sv.BoxAnnotator(
     thickness=2
@@ -73,10 +44,6 @@ label_annotator = sv.LabelAnnotator(
     text_scale=0.5,
     text_thickness=1
 )
-
-# ==============================
-# ORB STABILIZATION
-# ==============================
 
 orb = cv2.ORB_create(2000)
 
@@ -96,21 +63,9 @@ prev_gray = cv2.cvtColor(
     cv2.COLOR_BGR2GRAY
 )
 
-# ==============================
-# FPS TIMER
-# ==============================
-
 prev_time = 0
-
-# ==============================
-# UNIQUE IDS
-# ==============================
-
 unique_ids = set()
 
-# ==============================
-# MAIN LOOP
-# ==============================
 
 while True:
 
@@ -118,10 +73,6 @@ while True:
 
     if not ret:
         break
-
-    # ==========================
-    # STABILIZATION
-    # ==========================
 
     gray = cv2.cvtColor(
         frame,
@@ -176,10 +127,6 @@ while True:
 
     prev_gray = gray.copy()
 
-    # ==========================
-    # TILED INFERENCE
-    # ==========================
-
     tiles = []
 
     half_w = width // 2
@@ -223,10 +170,6 @@ while True:
                 all_conf.append(detections.confidence[i])
                 all_class_id.append(class_id)
 
-    # ==========================
-    # FINAL DETECTIONS
-    # ==========================
-
     if len(all_xyxy) > 0:
 
         detections = sv.Detections(
@@ -239,24 +182,13 @@ while True:
 
         detections = sv.Detections.empty()
 
-    # ==========================
-    # TRACKING
-    # ==========================
-
     tracked_detections = tracker.update_with_detections(
         detections
     )
 
-    # ==========================
-    # UNIQUE IDS
-    # ==========================
 
     for tracker_id in tracked_detections.tracker_id:
         unique_ids.add(tracker_id)
-
-    # ==========================
-    # LABELS
-    # ==========================
 
     labels = [
         f"PERSON #{tracker_id}"
@@ -264,29 +196,17 @@ while True:
         in tracked_detections.tracker_id
     ]
 
-    # ==========================
-    # DRAW BOXES
-    # ==========================
 
     annotated_frame = box_annotator.annotate(
         scene=stabilized_frame.copy(),
         detections=tracked_detections
     )
-
-    # ==========================
-    # DRAW LABELS
-    # ==========================
-
+  
     annotated_frame = label_annotator.annotate(
         scene=annotated_frame,
         detections=tracked_detections,
         labels=labels
     )
-
-    # ==========================
-    # TRAILS + HEATMAP
-    # ==========================
-
     for i in range(len(tracked_detections)):
 
         tracker_id = tracked_detections.tracker_id[i]
@@ -296,14 +216,12 @@ while True:
         center_x = int((x1 + x2) / 2)
         center_y = int((y1 + y2) / 2)
 
-        # Save movement history
         track_history[tracker_id].append(
             (center_x, center_y)
         )
 
         points = track_history[tracker_id]
 
-        # Draw trails
         for j in range(1, len(points)):
 
             thickness = int(
@@ -318,7 +236,6 @@ while True:
                 thickness
             )
 
-        # Draw center point
         cv2.circle(
             annotated_frame,
             (center_x, center_y),
@@ -326,8 +243,6 @@ while True:
             (0, 0, 255),
             -1
         )
-
-        # Update heatmap
         cv2.circle(
             heatmap,
             (center_x, center_y),
@@ -335,11 +250,6 @@ while True:
             1,
             -1
         )
-
-    # ==========================
-    # NORMALIZE HEATMAP
-    # ==========================
-
     heatmap_blur = cv2.GaussianBlur(
         heatmap,
         (51, 51),
@@ -359,10 +269,6 @@ while True:
         cv2.COLORMAP_JET
     )
 
-    # ==========================
-    # OVERLAY HEATMAP
-    # ==========================
-
     annotated_frame = cv2.addWeighted(
         annotated_frame,
         0.75,
@@ -371,19 +277,12 @@ while True:
         0
     )
 
-    # ==========================
-    # FPS
-    # ==========================
-
     current_time = time.time()
 
     fps_text = 1 / (current_time - prev_time)
 
     prev_time = current_time
 
-    # ==========================
-    # UI TEXT
-    # ==========================
 
     cv2.putText(
         annotated_frame,
@@ -425,28 +324,16 @@ while True:
         2
     )
 
-    # ==========================
-    # SAVE OUTPUT
-    # ==========================
 
     out.write(annotated_frame)
-
-    # ==========================
-    # DISPLAY
-    # ==========================
 
     cv2.imshow(
         "Analytics MOT System",
         annotated_frame
     )
 
-    # Quit
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-
-# ==============================
-# CLEANUP
-# ==============================
 
 cap.release()
 
