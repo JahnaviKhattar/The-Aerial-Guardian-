@@ -117,6 +117,8 @@ The final output video contains:
 * FPS information
 * Person analytics
 
+<img width="923" height="652" alt="output" src="https://github.com/user-attachments/assets/b2880dfe-4cfe-43d7-ba98-e0d2a9afbc01" />
+
 ## Technologies Used
 
 * Python
